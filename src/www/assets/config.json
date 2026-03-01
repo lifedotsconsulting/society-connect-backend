@@ -1,0 +1,8 @@
+{
+    "societyName": "Green Valley View",
+    "theme": {
+        "primary": "#3880ff",
+        "logoUrl": "assets/icon/favicon.png"
+    },
+    "apiBaseUrl": "http://localhost:3000/api/v1"
+}
