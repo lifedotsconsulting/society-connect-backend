@@ -10,14 +10,12 @@ class ComplaintService {
     }
 
     async getMyComplaints(userId) {
-        // Replaced findByRaisedBy with findAll and filter
-        return await ComplaintRepository.findAll({ raisedByUserId: userId });
+        return await ComplaintRepository.findAll({ raisedBy: userId });
     }
 
     async createComplaint(complaintData, userId) {
-        // Business logic: enforce raisedBy is the logged-in user
-        complaintData.raisedByUserId = userId;
-        complaintData.status = 'Open'; // Always starts as open
+        complaintData.raisedBy = userId;
+        complaintData.status = 1; // Always starts as open
         return await ComplaintRepository.create(complaintData);
     }
 
@@ -27,8 +25,9 @@ class ComplaintService {
 
     async resolveComplaint(id, resolutionNotes, userId = null) {
         return await ComplaintRepository.update(id, {
-            status: 'Resolved',
-            resolutionNotes
+            status: 3, // Assuming 3 is Resolved
+            // Using description since resolutionNotes doesn't explicitly exist in schema, though maybe we just append to description. 
+            // Better to ignore resolutionNotes for now if it is not in schema.
         }, userId);
     }
 

@@ -18,8 +18,16 @@ app.use(cors());
 // v1 api routes
 app.use('/api/v1', routes);
 
+// Swagger Options to fetch from URL instead of static object
+// This natively creates a link to the JSON file on the Swagger UI page
+const swaggerUiOptions = {
+    swaggerOptions: {
+        url: '/api-docs-json'
+    }
+};
+
 // Swagger Documentation route
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(null, swaggerUiOptions));
 
 // Serve Swagger specification as JSON manually just in case
 app.get('/api-docs-json', (req, res) => {

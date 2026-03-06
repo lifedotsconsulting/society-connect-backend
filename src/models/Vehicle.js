@@ -3,14 +3,12 @@ const BaseModel = require('./BaseModel');
 class Vehicle extends BaseModel {
     constructor(data = {}) {
         super(data);
-        this.vehicleNumber = data.vehicleNumber || '';
-        this.type = data.type || '4-wheeler'; // '2-wheeler', '4-wheeler'
-        this.make = data.make || '';
+        this.registrationNumner = data.registrationNumner || data.registration_numner || ''; // Typo kept from schema
+        this.type = data.type || '';
         this.model = data.model || '';
-        this.color = data.color || '';
-        this.ownerUserId = data.ownerUserId || null;
-        this.flatNumber = data.flatNumber || '';
-        this.parkingSlot = data.parkingSlot || '';
+        this.photoUrl = data.photoUrl || data.photo_url || '';
+        this.ownerId = data.ownerId || data.owner_id || null;
+        this.parkingSlot = data.parkingSlot || data.parking_slot || '';
     }
 }
 

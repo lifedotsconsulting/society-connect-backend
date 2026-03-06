@@ -1,83 +1,88 @@
 const db = require('../services/db.service');
 const Complaint = require('../models/Complaint');
+const config = require('../config');
+const s = config.db.schema;
 
 const QUERIES = {
-    FIND_ALL: 'SELECT * FROM Complaints WHERE isActive = 1',
-    FIND_BY_ID: 'SELECT * FROM Complaints WHERE identity = ? AND isActive = 1',
-    CREATE: 'INSERT INTO Complaints (identity, description, createdAt, createdBy, updatedAt, updatedBy, isActive, title, category, status, priority, raisedByUserId, raisedForFlat, assignedTo, resolutionNotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    UPDATE: 'UPDATE Complaints SET description = ?, updatedAt = ?, updatedBy = ?, title = ?, category = ?, status = ?, priority = ?, assignedTo = ?, resolutionNotes = ? WHERE identity = ?',
-    DELETE: 'UPDATE Complaints SET isActive = 0, updatedAt = ?, updatedBy = ? WHERE identity = ?'
+    FIND_ALL: `SELECT * FROM ${s}.ComplaINTs`, // Using the typo from schema
+    FIND_BY_ID: `SELECT * FROM ${s}.ComplaINTs WHERE id = ?`,
+    CREATE: `INSERT INTO ${s}.ComplaINTs (id, raised_by, flat_id, title, description, status, category, priority, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    UPDATE: `UPDATE ${s}.ComplaINTs SET raised_by = ?, flat_id = ?, title = ?, description = ?, status = ?, category = ?, priority = ?, updated_at = ?, updated_by = ? WHERE id = ?`,
+    DELETE: `DELETE FROM ${s}.ComplaINTs WHERE id = ?`
 };
 
 class ComplaintRepository {
     async findAll(filters = {}) {
         let query = QUERIES.FIND_ALL;
         const params = [];
+        let conditions = [];
 
         if (filters.status) {
-            query += ' AND status = ?';
+            conditions.push('status = ?');
             params.push(filters.status);
         }
         if (filters.category) {
-            query += ' AND category = ?';
+            conditions.push('category = ?');
             params.push(filters.category);
         }
-        if (filters.priority) {
-            query += ' AND priority = ?';
-            params.push(filters.priority);
+        if (filters.raisedBy) {
+            conditions.push('raised_by = ?');
+            params.push(filters.raisedBy);
         }
-        if (filters.raisedByUserId) {
-            query += ' AND raisedByUserId = ?';
-            params.push(filters.raisedByUserId);
+        if (filters.flatId) {
+            conditions.push('flat_id = ?');
+            params.push(filters.flatId);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
         }
 
         const results = await db.query(query, params);
         return results.map(row => new Complaint(row));
     }
 
-    async findById(identity) {
-        const results = await db.query(QUERIES.FIND_BY_ID, [identity]);
+    async findById(id) {
+        const results = await db.query(QUERIES.FIND_BY_ID, [id]);
         return results.length ? new Complaint(results[0]) : null;
     }
 
     async create(complaintData) {
         const complaint = new Complaint(complaintData);
-        if (!complaint.identity) {
-            complaint.identity = Math.random().toString(36).substring(2, 10);
+        if (!complaint.id) {
+            complaint.id = Math.random().toString(36).substring(2, 10);
         }
         await db.query(QUERIES.CREATE, [
-            complaint.identity, complaint.description, complaint.createdAt, complaint.createdBy, complaint.updatedAt, complaint.updatedBy, complaint.isActive ? 1 : 0,
-            complaint.title, complaint.category, complaint.status, complaint.priority, complaint.raisedByUserId, complaint.raisedForFlat, complaint.assignedTo, complaint.resolutionNotes
+            complaint.id, complaint.raisedBy, complaint.flatId, complaint.title, complaint.description, complaint.status, complaint.category, complaint.priority, complaint.createdAt, complaint.createdBy, complaint.updatedAt, complaint.updatedBy
         ]);
         return complaint;
     }
 
-    async update(identity, updateData, userId = null) {
-        const complaint = await this.findById(identity);
+    async update(id, updateData, userId = null) {
+        const complaint = await this.findById(id);
         if (!complaint) return null;
 
         const updatedAt = new Date();
         const updatedBy = userId || complaint.updatedBy;
 
         await db.query(QUERIES.UPDATE, [
+            updateData.raisedBy !== undefined ? updateData.raisedBy : complaint.raisedBy,
+            updateData.flatId !== undefined ? updateData.flatId : complaint.flatId,
+            updateData.title !== undefined ? updateData.title : complaint.title,
             updateData.description !== undefined ? updateData.description : complaint.description,
+            updateData.status !== undefined ? updateData.status : complaint.status,
+            updateData.category !== undefined ? updateData.category : complaint.category,
+            updateData.priority !== undefined ? updateData.priority : complaint.priority,
             updatedAt,
             updatedBy,
-            updateData.title !== undefined ? updateData.title : complaint.title,
-            updateData.category !== undefined ? updateData.category : complaint.category,
-            updateData.status !== undefined ? updateData.status : complaint.status,
-            updateData.priority !== undefined ? updateData.priority : complaint.priority,
-            updateData.assignedTo !== undefined ? updateData.assignedTo : complaint.assignedTo,
-            updateData.resolutionNotes !== undefined ? updateData.resolutionNotes : complaint.resolutionNotes,
-            identity
+            id
         ]);
 
-        return await this.findById(identity);
+        return await this.findById(id);
     }
 
-    async delete(identity, userId = null) {
-        const updatedAt = new Date();
-        await db.query(QUERIES.DELETE, [updatedAt, userId, identity]);
+    async delete(id, userId = null) {
+        await db.query(QUERIES.DELETE, [id]);
         return true;
     }
 }

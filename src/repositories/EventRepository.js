@@ -1,76 +1,87 @@
 const db = require('../services/db.service');
 const Event = require('../models/Event');
+const config = require('../config');
+const s = config.db.schema;
 
 const QUERIES = {
-    FIND_ALL: 'SELECT * FROM Events WHERE isActive = 1',
-    FIND_BY_ID: 'SELECT * FROM Events WHERE identity = ? AND isActive = 1',
-    CREATE: 'INSERT INTO Events (identity, description, createdAt, createdBy, updatedAt, updatedBy, isActive, title, eventDate, endDate, location, organizer, category, isPublished) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    UPDATE: 'UPDATE Events SET description = ?, updatedAt = ?, updatedBy = ?, title = ?, eventDate = ?, endDate = ?, location = ?, organizer = ?, category = ?, isPublished = ? WHERE identity = ?',
-    DELETE: 'UPDATE Events SET isActive = 0, updatedAt = ?, updatedBy = ? WHERE identity = ?'
+    FIND_ALL: `SELECT * FROM ${s}.Events`,
+    FIND_BY_ID: `SELECT * FROM ${s}.Events WHERE id = ?`,
+    CREATE: `INSERT INTO ${s}.Events (id, society_id, category_id, title, description, event_type, start_datetime, end_datetime, location, max_participants, registration_required, ticket_price, status, memebrs, created_by, created_at, updated_at, attachment_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    UPDATE: `UPDATE ${s}.Events SET society_id = ?, category_id = ?, title = ?, description = ?, event_type = ?, start_datetime = ?, end_datetime = ?, location = ?, max_participants = ?, registration_required = ?, ticket_price = ?, status = ?, memebrs = ?, updated_at = ?, attachment_url = ? WHERE id = ?`,
+    DELETE: `DELETE FROM ${s}.Events WHERE id = ?` // Assuming delete if no status used for soft delete, or we can use status = 0
 };
 
 class EventRepository {
     async findAll(filters = {}) {
         let query = QUERIES.FIND_ALL;
         const params = [];
+        let conditions = [];
 
-        if (filters.category) {
-            query += ' AND category = ?';
-            params.push(filters.category);
+        if (filters.societyId) {
+            conditions.push('society_id = ?');
+            params.push(filters.societyId);
         }
-        if (filters.isPublished !== undefined) {
-            query += ' AND isPublished = ?';
-            params.push(filters.isPublished);
+        if (filters.status !== undefined) {
+            conditions.push('status = ?');
+            params.push(filters.status);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
         }
 
         const results = await db.query(query, params);
         return results.map(row => new Event(row));
     }
 
-    async findById(identity) {
-        const results = await db.query(QUERIES.FIND_BY_ID, [identity]);
+    async findById(id) {
+        const results = await db.query(QUERIES.FIND_BY_ID, [id]);
         return results.length ? new Event(results[0]) : null;
     }
 
     async create(eventData) {
         const event = new Event(eventData);
-        if (!event.identity) {
-            event.identity = Math.random().toString(36).substring(2, 10);
+        if (!event.id) {
+            // Generating integer ID roughly as Events id is INTEGER according to schema... wait, math random is string.
+            // Let's use a huge timestamp int.
+            event.id = Math.floor(Date.now() / 1000);
         }
         await db.query(QUERIES.CREATE, [
-            event.identity, event.description, event.createdAt, event.createdBy, event.updatedAt, event.updatedBy, event.isActive ? 1 : 0,
-            event.title, event.eventDate, event.endDate, event.location, event.organizer, event.category, event.isPublished ? 1 : 0
+            event.id, event.societyId, event.categoryId, event.title, event.description, event.eventType, event.startDatetime, event.endDatetime, event.location, event.maxParticipants, event.registrationRequired ? 1 : 0, event.ticketPrice, event.status, event.members, event.createdBy, event.createdAt, event.updatedAt, event.attachmentUrl
         ]);
         return event;
     }
 
-    async update(identity, updateData, userId = null) {
-        const event = await this.findById(identity);
+    async update(id, updateData, userId = null) {
+        const event = await this.findById(id);
         if (!event) return null;
 
         const updatedAt = new Date();
-        const updatedBy = userId || event.updatedBy;
 
         await db.query(QUERIES.UPDATE, [
-            updateData.description !== undefined ? updateData.description : event.description,
-            updatedAt,
-            updatedBy,
+            updateData.societyId !== undefined ? updateData.societyId : event.societyId,
+            updateData.categoryId !== undefined ? updateData.categoryId : event.categoryId,
             updateData.title !== undefined ? updateData.title : event.title,
-            updateData.eventDate !== undefined ? updateData.eventDate : event.eventDate,
-            updateData.endDate !== undefined ? updateData.endDate : event.endDate,
+            updateData.description !== undefined ? updateData.description : event.description,
+            updateData.eventType !== undefined ? updateData.eventType : event.eventType,
+            updateData.startDatetime !== undefined ? updateData.startDatetime : event.startDatetime,
+            updateData.endDatetime !== undefined ? updateData.endDatetime : event.endDatetime,
             updateData.location !== undefined ? updateData.location : event.location,
-            updateData.organizer !== undefined ? updateData.organizer : event.organizer,
-            updateData.category !== undefined ? updateData.category : event.category,
-            updateData.isPublished !== undefined ? (updateData.isPublished ? 1 : 0) : event.isPublished,
-            identity
+            updateData.maxParticipants !== undefined ? updateData.maxParticipants : event.maxParticipants,
+            updateData.registrationRequired !== undefined ? (updateData.registrationRequired ? 1 : 0) : event.registrationRequired,
+            updateData.ticketPrice !== undefined ? updateData.ticketPrice : event.ticketPrice,
+            updateData.status !== undefined ? updateData.status : event.status,
+            updateData.members !== undefined ? updateData.members : event.members,
+            updatedAt,
+            updateData.attachmentUrl !== undefined ? updateData.attachmentUrl : event.attachmentUrl,
+            id
         ]);
 
-        return await this.findById(identity);
+        return await this.findById(id);
     }
 
-    async delete(identity, userId = null) {
-        const updatedAt = new Date();
-        await db.query(QUERIES.DELETE, [updatedAt, userId, identity]);
+    async delete(id) {
+        await db.query(QUERIES.DELETE, [id]);
         return true;
     }
 }

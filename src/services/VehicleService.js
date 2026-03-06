@@ -10,17 +10,14 @@ class VehicleService {
     }
 
     async getMyVehicles(userId) {
-        // Replaced findByOwner with findAll
-        return await VehicleRepository.findAll({ ownerUserId: userId });
+        return await VehicleRepository.findAll({ ownerId: userId });
     }
 
     async createVehicle(vehicleData, userId) {
-        // Business logic: assign to current user
-        vehicleData.ownerUserId = userId;
+        vehicleData.ownerId = userId;
 
-        // Check uniqueness
-        if (vehicleData.vehicleNumber) {
-            const results = await VehicleRepository.findAll({ vehicleNumber: vehicleData.vehicleNumber });
+        if (vehicleData.registrationNumner) {
+            const results = await VehicleRepository.findAll({ registrationNumner: vehicleData.registrationNumner });
             const existing = results.length > 0 ? results[0] : null;
             if (existing) {
                 throw new Error('Vehicle with this registration number already exists');

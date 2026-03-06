@@ -10,6 +10,7 @@ module.exports = {
     db: {
         server: process.env.DB_SERVER || 'localhost',
         name: process.env.DB_NAME || 'society_connect',
+        schema: process.env.DB_SCHEMA || 'society_hood',
         user: process.env.DB_USER || 'root',
         password: process.env.DB_PASSWORD || ''
     }

@@ -1,80 +1,82 @@
 const db = require('../services/db.service');
 const Flat = require('../models/Flat');
+const config = require('../config');
+const s = config.db.schema;
 
 const QUERIES = {
-    FIND_ALL: 'SELECT * FROM Flats WHERE isActive = 1',
-    FIND_BY_ID: 'SELECT * FROM Flats WHERE identity = ? AND isActive = 1',
-    CREATE: 'INSERT INTO Flats (identity, description, createdAt, createdBy, updatedAt, updatedBy, isActive, flatNumber, block, floor, bhk, occupancyStatus, currentResidentId, ownerId) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    UPDATE: 'UPDATE Flats SET description = ?, updatedAt = ?, updatedBy = ?, flatNumber = ?, block = ?, floor = ?, bhk = ?, occupancyStatus = ?, currentResidentId = ?, ownerId = ? WHERE identity = ?',
-    DELETE: 'UPDATE Flats SET isActive = 0, updatedAt = ?, updatedBy = ? WHERE identity = ?'
+    FIND_ALL: `SELECT * FROM ${s}.Flats`,
+    FIND_BY_ID: `SELECT * FROM ${s}.Flats WHERE id = ?`,
+    CREATE: `INSERT INTO ${s}.Flats (id, number, block, floor, size, occupancy_status, current_resident, owner_id, description, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    UPDATE: `UPDATE ${s}.Flats SET number = ?, block = ?, floor = ?, size = ?, occupancy_status = ?, current_resident = ?, owner_id = ?, description = ?, updated_at = ?, updated_by = ? WHERE id = ?`,
+    DELETE: `DELETE FROM ${s}.Flats WHERE id = ?`
 };
 
 class FlatRepository {
     async findAll(filters = {}) {
         let query = QUERIES.FIND_ALL;
         const params = [];
+        let conditions = [];
 
         if (filters.block) {
-            query += ' AND block = ?';
+            conditions.push('block = ?');
             params.push(filters.block);
         }
-        if (filters.floor) {
-            query += ' AND floor = ?';
-            params.push(filters.floor);
-        }
         if (filters.occupancyStatus) {
-            query += ' AND occupancyStatus = ?';
+            conditions.push('occupancy_status = ?');
             params.push(filters.occupancyStatus);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
         }
 
         const results = await db.query(query, params);
         return results.map(row => new Flat(row));
     }
 
-    async findById(identity) {
-        const results = await db.query(QUERIES.FIND_BY_ID, [identity]);
+    async findById(id) {
+        const results = await db.query(QUERIES.FIND_BY_ID, [id]);
         return results.length ? new Flat(results[0]) : null;
     }
 
     async create(flatData) {
         const flat = new Flat(flatData);
-        if (!flat.identity) {
-            flat.identity = Math.random().toString(36).substring(2, 10);
+        if (!flat.id) {
+            flat.id = Math.random().toString(36).substring(2, 10);
         }
         await db.query(QUERIES.CREATE, [
-            flat.identity, flat.description, flat.createdAt, flat.createdBy, flat.updatedAt, flat.updatedBy, flat.isActive ? 1 : 0,
-            flat.flatNumber, flat.block, flat.floor, flat.bhk, flat.occupancyStatus, flat.currentResidentId, flat.ownerId
+            flat.id, flat.number, flat.block, flat.floor, flat.size, flat.occupancyStatus, flat.currentResident, flat.ownerId, flat.description, flat.createdAt, flat.createdBy, flat.updatedAt, flat.updatedBy
         ]);
         return flat;
     }
 
-    async update(identity, updateData, userId = null) {
-        const flat = await this.findById(identity);
+    async update(id, updateData, userId = null) {
+        const flat = await this.findById(id);
         if (!flat) return null;
 
         const updatedAt = new Date();
         const updatedBy = userId || flat.updatedBy;
 
         await db.query(QUERIES.UPDATE, [
+            updateData.number !== undefined ? updateData.number : flat.number,
+            updateData.block !== undefined ? updateData.block : flat.block,
+            updateData.floor !== undefined ? updateData.floor : flat.floor,
+            updateData.size !== undefined ? updateData.size : flat.size,
+            updateData.occupancyStatus !== undefined ? updateData.occupancyStatus : flat.occupancyStatus,
+            updateData.currentResident !== undefined ? updateData.currentResident : flat.currentResident,
+            updateData.ownerId !== undefined ? updateData.ownerId : flat.ownerId,
             updateData.description !== undefined ? updateData.description : flat.description,
             updatedAt,
             updatedBy,
-            updateData.flatNumber !== undefined ? updateData.flatNumber : flat.flatNumber,
-            updateData.block !== undefined ? updateData.block : flat.block,
-            updateData.floor !== undefined ? updateData.floor : flat.floor,
-            updateData.bhk !== undefined ? updateData.bhk : flat.bhk,
-            updateData.occupancyStatus !== undefined ? updateData.occupancyStatus : flat.occupancyStatus,
-            updateData.currentResidentId !== undefined ? updateData.currentResidentId : flat.currentResidentId,
-            updateData.ownerId !== undefined ? updateData.ownerId : flat.ownerId,
-            identity
+            id
         ]);
 
-        return await this.findById(identity);
+        return await this.findById(id);
     }
 
-    async delete(identity, userId = null) {
-        const updatedAt = new Date();
-        await db.query(QUERIES.DELETE, [updatedAt, userId, identity]);
+    async delete(id, userId = null) {
+        // Hard delete as no status column exists for Flats in schema.sql
+        await db.query(QUERIES.DELETE, [id]);
         return true;
     }
 }

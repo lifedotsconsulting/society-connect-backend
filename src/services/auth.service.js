@@ -2,6 +2,7 @@
 // For this migration, we will extract the mock data logic from the frontend auth.service so it's handled server-side.
 const db = require('./db.service');
 const HashService = require('./hash.service');
+const UserRepository = require('../repositories/UserRepository');
 
 const MOCK_SOCIETIES = [
     {
@@ -41,16 +42,9 @@ const loginUserWithFlatAndPass = async (flatNumber, password, deviceId) => {
         throw new AuthError('EMPTY', 400); // Bad Request
     }
 
-    console.log(flatNumber, password, deviceId);
     const hashedPassword = HashService.md5(password);
-    console.log('hashedPassword: ', hashedPassword);
     // Query user by flatNumber and ensure the user is active
-    const users = await db.query(
-        'SELECT * FROM Users WHERE LOWER(flatNumber) = LOWER(?) AND passwordHash = ? AND isActive = 1',
-        [flatNumber, hashedPassword]
-    );
-    const user = users[0];
-    console.log('user: ', user);
+    const user = await UserRepository.findByUsernameAndPassword(flatNumber, hashedPassword);
     if (!user) {
         throw new AuthError('NOT_FOUND', 404);
     }
@@ -67,21 +61,15 @@ const loginUserWithFlatAndPass = async (flatNumber, password, deviceId) => {
     // If first time login or device matches, register/update the device ID
     if (user.deviceId !== deviceId) {
         if (deviceId) {
-            await db.query(
-                'UPDATE Users SET deviceId = ?, updatedAt = NOW() WHERE identity = ?',
-                [deviceId, user.identity]
-            );
+            await UserRepository.updateDeviceId(user.id, deviceId);
         }
         user.deviceId = deviceId;
     }
 
-    // Find society - Society is currently mocked since no Society schema was defined
-    const society = MOCK_SOCIETIES[0];
-
-    // Exclude password from returned user object
+    // Exclude password from returned user object (if it's there)
     const { passwordHash, ...userWithoutPass } = user;
 
-    return { ...userWithoutPass, society };
+    return { ...userWithoutPass };
 };
 
 module.exports = {

@@ -18,7 +18,7 @@ class UserController {
             if (!userId) {
                 return res.status(401).json({ error: 'Unauthorized: User not identified. Missing token.' });
             }
-            console.log('userId: ', userId);
+            //console.log('userId: ', userId);
             const user = await UserService.getUserById(userId);
             if (!user) {
                 return res.status(404).json({ error: 'User profile not found' });

@@ -14,6 +14,8 @@ const pool = mysql.createPool({
 
 module.exports = {
     query: async (sql, params) => {
+        //  console.log(sql, params);
+        //console.log(config.db.server);
         const [results,] = await pool.execute(sql, params);
         return results;
     },

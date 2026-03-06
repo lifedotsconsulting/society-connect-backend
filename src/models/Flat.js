@@ -3,13 +3,13 @@ const BaseModel = require('./BaseModel');
 class Flat extends BaseModel {
     constructor(data = {}) {
         super(data);
-        this.flatNumber = data.flatNumber || '';
+        this.number = data.number || '';
         this.block = data.block || '';
-        this.floor = data.floor || 1;
-        this.bhk = data.bhk || '2BHK';
-        this.occupancyStatus = data.occupancyStatus || 'Vacant'; // 'Vacant', 'Owner', 'Tenant'
-        this.currentResidentId = data.currentResidentId || null;
-        this.ownerId = data.ownerId || null;
+        this.floor = data.floor || '';
+        this.size = data.size || '';
+        this.occupancyStatus = data.occupancyStatus || data.occupancy_status || '';
+        this.currentResident = data.currentResident || data.current_resident || null;
+        this.ownerId = data.ownerId || data.owner_id || null;
     }
 }
 

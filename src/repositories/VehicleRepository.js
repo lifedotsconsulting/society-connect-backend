@@ -1,81 +1,79 @@
 const db = require('../services/db.service');
 const Vehicle = require('../models/Vehicle');
+const config = require('../config');
+const s = config.db.schema;
 
 const QUERIES = {
-    FIND_ALL: 'SELECT * FROM Vehicles WHERE isActive = 1',
-    FIND_BY_ID: 'SELECT * FROM Vehicles WHERE identity = ? AND isActive = 1',
-    CREATE: 'INSERT INTO Vehicles (identity, description, createdAt, createdBy, updatedAt, updatedBy, isActive, vehicleNumber, type, make, model, color, ownerUserId, flatNumber, parkingSlot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    UPDATE: 'UPDATE Vehicles SET description = ?, updatedAt = ?, updatedBy = ?, vehicleNumber = ?, type = ?, make = ?, model = ?, color = ?, ownerUserId = ?, flatNumber = ?, parkingSlot = ? WHERE identity = ?',
-    DELETE: 'UPDATE Vehicles SET isActive = 0, updatedAt = ?, updatedBy = ? WHERE identity = ?'
+    FIND_ALL: `SELECT * FROM ${s}.Vehicles`,
+    FIND_BY_ID: `SELECT * FROM ${s}.Vehicles WHERE id = ?`,
+    CREATE: `INSERT INTO ${s}.Vehicles (id, registration_numner, type, model, photo_url, owner_id, parking_slot, created_at, created_by, updated_at, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    UPDATE: `UPDATE ${s}.Vehicles SET registration_numner = ?, type = ?, model = ?, photo_url = ?, owner_id = ?, parking_slot = ?, updated_at = ?, updated_by = ? WHERE id = ?`,
+    DELETE: `DELETE FROM ${s}.Vehicles WHERE id = ?`
 };
 
 class VehicleRepository {
     async findAll(filters = {}) {
         let query = QUERIES.FIND_ALL;
         const params = [];
+        let conditions = [];
 
         if (filters.type) {
-            query += ' AND type = ?';
+            conditions.push('type = ?');
             params.push(filters.type);
         }
-        if (filters.flatNumber) {
-            query += ' AND flatNumber = ?';
-            params.push(filters.flatNumber);
+        if (filters.ownerId) {
+            conditions.push('owner_id = ?');
+            params.push(filters.ownerId);
         }
-        if (filters.ownerUserId) {
-            query += ' AND ownerUserId = ?';
-            params.push(filters.ownerUserId);
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
         }
 
         const results = await db.query(query, params);
         return results.map(row => new Vehicle(row));
     }
 
-    async findById(identity) {
-        const results = await db.query(QUERIES.FIND_BY_ID, [identity]);
+    async findById(id) {
+        const results = await db.query(QUERIES.FIND_BY_ID, [id]);
         return results.length ? new Vehicle(results[0]) : null;
     }
 
     async create(vehicleData) {
         const vehicle = new Vehicle(vehicleData);
-        if (!vehicle.identity) {
-            vehicle.identity = Math.random().toString(36).substring(2, 10);
+        if (!vehicle.id) {
+            vehicle.id = Math.random().toString(36).substring(2, 10);
         }
         await db.query(QUERIES.CREATE, [
-            vehicle.identity, vehicle.description, vehicle.createdAt, vehicle.createdBy, vehicle.updatedAt, vehicle.updatedBy, vehicle.isActive ? 1 : 0,
-            vehicle.vehicleNumber, vehicle.type, vehicle.make, vehicle.model, vehicle.color, vehicle.ownerUserId, vehicle.flatNumber, vehicle.parkingSlot
+            vehicle.id, vehicle.registrationNumner, vehicle.type, vehicle.model, vehicle.photoUrl, vehicle.ownerId, vehicle.parkingSlot, vehicle.createdAt, vehicle.createdBy, vehicle.updatedAt, vehicle.updatedBy
         ]);
         return vehicle;
     }
 
-    async update(identity, updateData, userId = null) {
-        const vehicle = await this.findById(identity);
+    async update(id, updateData, userId = null) {
+        const vehicle = await this.findById(id);
         if (!vehicle) return null;
 
         const updatedAt = new Date();
         const updatedBy = userId || vehicle.updatedBy;
 
         await db.query(QUERIES.UPDATE, [
-            updateData.description !== undefined ? updateData.description : vehicle.description,
+            updateData.registrationNumner !== undefined ? updateData.registrationNumner : vehicle.registrationNumner,
+            updateData.type !== undefined ? updateData.type : vehicle.type,
+            updateData.model !== undefined ? updateData.model : vehicle.model,
+            updateData.photoUrl !== undefined ? updateData.photoUrl : vehicle.photoUrl,
+            updateData.ownerId !== undefined ? updateData.ownerId : vehicle.ownerId,
+            updateData.parkingSlot !== undefined ? updateData.parkingSlot : vehicle.parkingSlot,
             updatedAt,
             updatedBy,
-            updateData.vehicleNumber !== undefined ? updateData.vehicleNumber : vehicle.vehicleNumber,
-            updateData.type !== undefined ? updateData.type : vehicle.type,
-            updateData.make !== undefined ? updateData.make : vehicle.make,
-            updateData.model !== undefined ? updateData.model : vehicle.model,
-            updateData.color !== undefined ? updateData.color : vehicle.color,
-            updateData.ownerUserId !== undefined ? updateData.ownerUserId : vehicle.ownerUserId,
-            updateData.flatNumber !== undefined ? updateData.flatNumber : vehicle.flatNumber,
-            updateData.parkingSlot !== undefined ? updateData.parkingSlot : vehicle.parkingSlot,
-            identity
+            id
         ]);
 
-        return await this.findById(identity);
+        return await this.findById(id);
     }
 
-    async delete(identity, userId = null) {
-        const updatedAt = new Date();
-        await db.query(QUERIES.DELETE, [updatedAt, userId, identity]);
+    async delete(id, userId = null) {
+        await db.query(QUERIES.DELETE, [id]);
         return true;
     }
 }

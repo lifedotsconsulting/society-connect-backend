@@ -19,7 +19,7 @@ const verifyToken = (req, res, next) => {
             identity: payload.sub
         };
 
-        console.log('req.url' + req.url + 'req.user: ', req.user);
+        //  console.log('req.url' + req.url + 'req.user: ', req.user);
         next();
     } catch (error) {
         return res.status(401).json({ error: 'Unauthorized: Invalid token' });
