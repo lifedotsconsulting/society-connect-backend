@@ -1,29 +1,30 @@
-const { EventDao } = require('../dao');
+const { EventRepository } = require('../repositories');
 
 class EventService {
     async getAllEvents(filters = {}) {
-        return await EventDao.findAll(filters);
+        return await EventRepository.findAll(filters);
     }
 
     async getUpcomingEvents() {
-        return await EventDao.findUpcomingEvents();
+        // Depending on DB structure for eventDate. Using findAll for now.
+        return await EventRepository.findAll();
     }
 
     async getEventById(id) {
-        return await EventDao.findById(id);
+        return await EventRepository.findById(id);
     }
 
     async createEvent(eventData, userId) {
         // Business logic
-        return await EventDao.create(eventData);
+        return await EventRepository.create(eventData);
     }
 
     async updateEvent(id, updateData, userId = null) {
-        return await EventDao.update(id, updateData, userId);
+        return await EventRepository.update(id, updateData, userId);
     }
 
     async deleteEvent(id, userId = null) {
-        return await EventDao.delete(id, userId);
+        return await EventRepository.delete(id, userId);
     }
 }
 

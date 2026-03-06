@@ -1,12 +1,7 @@
 // In a real application, Mongoose User schemas would be used here. 
 // For this migration, we will extract the mock data logic from the frontend auth.service so it's handled server-side.
-
-// Mock User DB
-const MOCK_USERS = [
-    { id: '1', name: 'John Doe', flatNumber: 'A101', role: 'Admin', pass: 'password123', registeredDeviceId: null, societyId: 's1' },
-    { id: '2', name: 'Jane Smith', flatNumber: 'B403', role: 'FlatOwner', pass: 'password123', registeredDeviceId: null, societyId: 's1' },
-    { id: '3', name: 'Bob Johnson', flatNumber: 'C202', role: 'Chairman', pass: 'password123', registeredDeviceId: null, societyId: 's1' }
-];
+const db = require('./db.service');
+const HashService = require('./hash.service');
 
 const MOCK_SOCIETIES = [
     {
@@ -46,29 +41,45 @@ const loginUserWithFlatAndPass = async (flatNumber, password, deviceId) => {
         throw new AuthError('EMPTY', 400); // Bad Request
     }
 
-    const user = MOCK_USERS.find(u => u.flatNumber.toLowerCase() === flatNumber.toLowerCase());
-
+    console.log(flatNumber, password, deviceId);
+    const hashedPassword = HashService.md5(password);
+    console.log('hashedPassword: ', hashedPassword);
+    // Query user by flatNumber and ensure the user is active
+    const users = await db.query(
+        'SELECT * FROM Users WHERE LOWER(flatNumber) = LOWER(?) AND passwordHash = ? AND isActive = 1',
+        [flatNumber, hashedPassword]
+    );
+    const user = users[0];
+    console.log('user: ', user);
     if (!user) {
         throw new AuthError('NOT_FOUND', 404);
     }
 
-    if (user.pass !== password) {
-        throw new AuthError('INVALID_PASS', 401);
-    }
+    // if (!HashService.compareMd5(hashedPassword, user.passwordHash)) {
+    //     throw new AuthError('INVALID_PASS', 401);
+    // }
 
     // Device Lock Logic (1 User per Flat per Device constraint)
-    if (user.registeredDeviceId && user.registeredDeviceId !== deviceId) {
+    if (user.deviceId && user.deviceId !== deviceId) {
         // throw new AuthError('DEVICE_LOCKED', 403);
     }
 
     // If first time login or device matches, register/update the device ID
-    user.registeredDeviceId = deviceId;
+    if (user.deviceId !== deviceId) {
+        if (deviceId) {
+            await db.query(
+                'UPDATE Users SET deviceId = ?, updatedAt = NOW() WHERE identity = ?',
+                [deviceId, user.identity]
+            );
+        }
+        user.deviceId = deviceId;
+    }
 
-    // Find society
-    const society = MOCK_SOCIETIES.find(s => s.id === user.societyId);
+    // Find society - Society is currently mocked since no Society schema was defined
+    const society = MOCK_SOCIETIES[0];
 
     // Exclude password from returned user object
-    const { pass, ...userWithoutPass } = user;
+    const { passwordHash, ...userWithoutPass } = user;
 
     return { ...userWithoutPass, society };
 };

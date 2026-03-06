@@ -37,7 +37,7 @@ class BaseDao {
      * @returns {Object|null} - Model instance or null
      */
     async findById(id) {
-        const item = this.collection.find(i => i.identity === id && i.isActive !== false);
+        const item = this.collection.find(i => i.identity == id);
         return item || null;
     }
 

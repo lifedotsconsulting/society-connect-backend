@@ -1,16 +1,17 @@
-const { VehicleDao } = require('../dao');
+const { VehicleRepository } = require('../repositories');
 
 class VehicleService {
     async getAllVehicles(filters = {}) {
-        return await VehicleDao.findAll(filters);
+        return await VehicleRepository.findAll(filters);
     }
 
     async getVehicleById(id) {
-        return await VehicleDao.findById(id);
+        return await VehicleRepository.findById(id);
     }
 
     async getMyVehicles(userId) {
-        return await VehicleDao.findByOwner(userId);
+        // Replaced findByOwner with findAll
+        return await VehicleRepository.findAll({ ownerUserId: userId });
     }
 
     async createVehicle(vehicleData, userId) {
@@ -19,21 +20,22 @@ class VehicleService {
 
         // Check uniqueness
         if (vehicleData.vehicleNumber) {
-            const existing = await VehicleDao.findByVehicleNumber(vehicleData.vehicleNumber);
+            const results = await VehicleRepository.findAll({ vehicleNumber: vehicleData.vehicleNumber });
+            const existing = results.length > 0 ? results[0] : null;
             if (existing) {
                 throw new Error('Vehicle with this registration number already exists');
             }
         }
 
-        return await VehicleDao.create(vehicleData);
+        return await VehicleRepository.create(vehicleData);
     }
 
     async updateVehicle(id, updateData, userId = null) {
-        return await VehicleDao.update(id, updateData, userId);
+        return await VehicleRepository.update(id, updateData, userId);
     }
 
     async deleteVehicle(id, userId = null) {
-        return await VehicleDao.delete(id, userId);
+        return await VehicleRepository.delete(id, userId);
     }
 }
 

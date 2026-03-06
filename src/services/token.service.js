@@ -26,7 +26,8 @@ const generateAuthTokens = async (user) => {
     // Generate token valid for specified config time (e.g. 7 days = 604800 seconds)
     // For simplicity using hardcoded expiry seconds if config not set cleanly
     const expires = Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60);
-    const accessToken = generateToken(user.id, expires);
+    const userId = user.identity || user.id;
+    const accessToken = generateToken(userId, expires);
 
     return {
         access: {

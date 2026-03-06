@@ -1,20 +1,20 @@
-const { UserDao } = require('../dao');
+const { UserRepository } = require('../repositories');
 // Placeholder for future logic like password hashing (bcrypt)
 // const bcrypt = require('bcrypt');
 
 class UserService {
     async getAllUsers(filters = {}) {
-        return await UserDao.findAll(filters);
+        return await UserRepository.findAll(filters);
     }
 
     async getUserById(id) {
-        return await UserDao.findById(id);
+        return await UserRepository.findById(id);
     }
 
     async createUser(userData) {
         // Business logic: check if user already exists
         if (userData.email) {
-            const existing = await UserDao.findByEmail(userData.email);
+            const existing = await UserRepository.findByEmail(userData.email);
             if (existing) {
                 throw new Error('User with this email already exists');
             }
@@ -28,7 +28,7 @@ class UserService {
         }
         */
 
-        return await UserDao.create(userData);
+        return await UserRepository.create(userData);
     }
 
     async updateUser(id, updateData, adminUserId = null) {
@@ -36,11 +36,11 @@ class UserService {
         delete updateData.identity;
         delete updateData.passwordHash; // Handled by separate endpoint usually
 
-        return await UserDao.update(id, updateData, adminUserId);
+        return await UserRepository.update(id, updateData, adminUserId);
     }
 
     async deleteUser(id, adminUserId = null) {
-        return await UserDao.delete(id, adminUserId);
+        return await UserRepository.delete(id, adminUserId);
     }
 }
 

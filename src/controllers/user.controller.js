@@ -10,6 +10,29 @@ class UserController {
         }
     }
 
+    async getProfile(req, res) {
+        try {
+            // Assume req.user comes from token auth middleware later
+            const userId = req.user ? req.user.identity : null;
+
+            if (!userId) {
+                return res.status(401).json({ error: 'Unauthorized: User not identified. Missing token.' });
+            }
+            console.log('userId: ', userId);
+            const user = await UserService.getUserById(userId);
+            if (!user) {
+                return res.status(404).json({ error: 'User profile not found' });
+            }
+
+            // Do not return passwordHash
+            const { passwordHash, ...profileData } = user;
+
+            res.status(200).json(profileData);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    }
+
     async getUserById(req, res) {
         try {
             const user = await UserService.getUserById(req.params.id);
